@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@hasura/ndc-sdk-typescript": "^1.2.3",
+    "sqlite": "^5.0.1",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}

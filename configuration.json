@@ -1,0 +1,19 @@
+{
+    "tables": [
+        {
+            "tableName": "albums",
+            "columns": {
+                "id": {},
+                "title": {},
+                "artist_id": {}
+            }
+        },
+        {
+            "tableName": "artists",
+            "columns": {
+                "id": {},
+                "name": {}
+            }
+        }
+    ]
+}

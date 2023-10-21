@@ -1,0 +1,257 @@
+kind: CompatibilityConfig
+date: 2023-10-19
+---
+kind: AuthConfig
+version: v1
+definition:
+  allowRoleEmulationBy: admin
+  mode:
+    webhook:
+      method: Post
+      url: https://auth.pro.hasura.io/webhook/ddn?role=admin
+---
+kind: DataConnector
+version: v1
+definition:
+  name: sqlite
+  url:
+    # singleUrl: 'http://0.0.0.0:8100'
+    singleUrl: 'http://us-west2-a-001.secure-connect.cloud.internal:2008'
+  schema:
+    collections:
+      - arguments: {}
+        name: albums
+        deletable: false
+        foreign_keys: {}
+        uniqueness_constraints: {}
+        type: albums
+      - arguments: {}
+        name: artists
+        deletable: false
+        foreign_keys: {}
+        uniqueness_constraints: {}
+        type: artists
+    functions: []
+    object_types:
+      albums:
+        fields:
+          id:
+            type:
+              type: named
+              name: any
+          title:
+            type:
+              type: named
+              name: any
+          artist_id:
+            type:
+              type: named
+              name: any
+      artists:
+        fields:
+          id:
+            type:
+              type: named
+              name: any
+          name:
+            type:
+              type: named
+              name: any
+    procedures: []
+    scalar_types:
+      any:
+        aggregate_functions: {}
+        comparison_operators: {}
+        update_operators: {}
+  
+---
+kind: ScalarType
+version: v1
+definition:
+  name: any
+  graphql:
+    typeName: any
+
+---
+kind: DataConnectorScalarRepresentation
+version: v1
+definition:
+  dataConnectorName: sqlite
+  dataConnectorScalarType: any
+  representation: any
+  graphql: 
+    comparisonExpressionTypeName: any_comparison_exp
+---
+kind: ObjectType
+version: v1
+definition:
+  name: albums
+  fields:
+    - name: id
+      type: any
+    - name: title
+      type: any
+    - name: artist_id
+      type: any
+  graphql:
+    typeName: albums
+
+---
+kind: TypePermissions
+version: v1
+definition:
+  typeName: albums
+  permissions:
+    - role: admin
+      output:
+        allowedFields:
+          - id
+          - title
+          - artist_id
+
+---
+kind: ObjectType
+version: v1
+definition:
+  name: artists
+  fields:
+    - name: id
+      type: any
+    - name: name
+      type: any
+  graphql:
+    typeName: artists
+
+---
+kind: TypePermissions
+version: v1
+definition:
+  typeName: artists
+  permissions:
+    - role: admin
+      output:
+        allowedFields:
+          - id
+          - name
+
+---
+kind: Model
+version: v1
+definition:
+  name: albums
+  objectType: albums
+  filterableFields:
+    - fieldName: id
+      operators:
+        enableAll: true
+    - fieldName: title
+      operators:
+        enableAll: true
+    - fieldName: artist_id
+      operators:
+        enableAll: true
+  orderableFields:
+    - fieldName: id
+      orderByDirections:
+        enableAll: true
+    - fieldName: title
+      orderByDirections:
+        enableAll: true
+    - fieldName: artist_id
+      orderByDirections:
+        enableAll: true
+  source:
+    dataConnectorName: sqlite
+    collection: albums
+  graphql:
+    selectUniques: []
+    selectMany:
+      queryRootField: albums
+    filterExpressionType: albums_bool_exp
+    orderByExpressionType: albums_order_by
+
+---
+kind: ModelPermissions
+version: v1
+definition:
+  modelName: albums
+  permissions:
+    - role: admin
+      select:
+        filter: null
+
+---
+kind: Model
+version: v1
+definition:
+  name: artists
+  objectType: artists
+  filterableFields:
+    - fieldName: id
+      operators:
+        enableAll: true
+    - fieldName: name
+      operators:
+        enableAll: true
+  orderableFields:
+    - fieldName: id
+      orderByDirections:
+        enableAll: true
+    - fieldName: name
+      orderByDirections:
+        enableAll: true
+  source:
+    dataConnectorName: sqlite
+    collection: artists
+  graphql:
+    selectUniques: []
+    selectMany:
+      queryRootField: artists
+    filterExpressionType: artists_bool_exp
+    orderByExpressionType: artists_order_by
+
+---
+kind: ModelPermissions
+version: v1
+definition:
+  modelName: artists
+  permissions:
+    - role: admin
+      select:
+        filter: null
+
+---
+kind: Relationship
+version: v1
+definition:
+  name: artist
+  source: albums
+  target:
+    model:
+      name: artists
+      relationshipType: Object
+  mapping:
+    - source:
+        fieldPath:
+          - fieldName: artist_id
+      target:
+        modelField:
+          - fieldName: id
+
+---
+kind: Relationship
+version: v1
+definition:
+  name: albums
+  source: artists
+  target:
+    model:
+      name: albums
+      relationshipType: Array
+  mapping:
+    - source:
+        fieldPath:
+          - fieldName: id
+      target:
+        modelField:
+          - fieldName: artist_id
