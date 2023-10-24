@@ -1,7 +1,8 @@
 import sqlite3 from 'sqlite3';
-import { Database, Statement, open } from 'sqlite';
-import { CapabilitiesResponse, CollectionInfo, Connector, ExplainResponse, MutationRequest, MutationResponse, ObjectField, ObjectType, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { Database, open } from 'sqlite';
+import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
+import { ComparisonTarget, Expression } from '@hasura/ndc-sdk-typescript/dist/generated/typescript/QueryRequest';
 
 type RawConfiguration = {
     tables: TableConfiguration[];
@@ -145,13 +146,93 @@ async function fetch_rows(state: State, request: QueryRequest): Promise<{
                 case 'relationship':
                     throw new Error("Relationships are not supported");
             }
-
         }
     }
 
-    return state.db.all(`SELECT ${fields.join(", ")} FROM ${request.collection}`);
+    if (request.query.order_by != null) {
+        throw new NotSupported("Sorting is not supported");
+    }
+
+    const parameters: any[] = [];
+
+    const limit_clause = request.query.limit == null ? "" : `LIMIT ${request.query.limit}`;
+    const offset_clause = request.query.offset == null ? "" : `OFFSET ${request.query.offset}`;
+
+    const where_clause = request.query.where == null ? "" : `WHERE ${visit_expression(parameters, request.query.where)}`;
+
+    const sql = `SELECT ${fields.join(", ")} FROM ${request.collection} ${where_clause} ${limit_clause} ${offset_clause}`;
+
+    console.log(JSON.stringify({ sql, parameters }, null, 2));
+
+    return state.db.all(sql, ...parameters);
 }
 
+function visit_expression_with_parens(parameters: any[], expr: Expression): string {
+    return `(${visit_expression(parameters, expr)})`;
+}
+
+function visit_expression(parameters: any[], expr: Expression): string {
+    switch (expr.type) {
+        case "and":
+            if (expr.expressions.length > 0) {
+                return expr.expressions.map(e => visit_expression_with_parens(parameters, e)).join(" AND ");
+            } else {
+                return "TRUE";
+            }
+        case "or":
+            if (expr.expressions.length > 0) {
+                return expr.expressions.map(e => visit_expression_with_parens(parameters, e)).join(" OR ");
+            } else {
+                return "FALSE";
+            }
+        case "not":
+            return `NOT ${visit_expression_with_parens(parameters, expr.expression)}`;
+        case "unary_comparison_operator":
+            switch (expr.operator) {
+                case 'is_null':
+                    return `${visit_comparison_target(expr.column)} IS NULL`;
+                default:
+                    throw new BadRequest("Unknown comparison operator");
+            }
+        case "binary_comparison_operator":
+            switch (expr.operator.type) {
+                case 'equal':
+                    return `${visit_comparison_target(expr.column)} = ${visit_comparison_value(parameters, expr.value)}`
+                default:
+                    throw new BadRequest("Unknown comparison operator");
+            }
+        case "binary_array_comparison_operator":
+            throw new NotSupported("binary_array_comparison_operator is not supported");
+        case "exists":
+            throw new NotSupported("exists is not supported");
+        default:
+            throw new BadRequest("Unknown expression type");
+    }
+}
+
+function visit_comparison_target(target: ComparisonTarget) {
+    switch (target.type) {
+        case 'column':
+            if (target.path.length > 0) {
+                throw new NotSupported("Relationships are not supported");
+            }
+            return target.name;
+        case 'root_collection_column':
+            throw new NotSupported("Relationships are not supported");
+    }
+}
+
+function visit_comparison_value(parameters: any[], target: ComparisonValue) {
+    switch (target.type) {
+        case 'scalar':
+            parameters.push(target.value);
+            return "?";
+        case 'column':
+            throw new NotSupported("column_comparisons are not supported");
+        case 'variable':
+            throw new NotSupported("Variables are not supported");
+    }
+}
 
 const connector: Connector<RawConfiguration, Configuration, State> = {
     get_raw_configuration_schema,

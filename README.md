@@ -2,8 +2,10 @@
 
 ## Video Tutorials
 
-1. [Setup](videos/1/README.markdown)
-1. More coming soon!
+1. [Setup \[9:31\]](videos/1/README.markdown)
+1. [Predicates \[6:51\]](videos/2/README.markdown)
+1. Sorting
+1. Aggregates
 
 ## Getting Started
 
