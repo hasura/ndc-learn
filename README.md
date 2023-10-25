@@ -6,12 +6,26 @@ It is recommended that you first review the [Hasura NDC Specification](http://ha
 
 The dependencies required to follow along here are minimal - you will need Node and `npm` so that you can run the TypeScript compiler. If you'd like to follow along using the same test-driven approach, then you will also need a working `ndc-test` executable on your `PATH`. `ndc-test` can be installed using the Rust toolchain from the [`ndc-spec`](https://github.com/hasura/ndc-spec) repository.
 
+_Note_: if you would like to follow along with the demos, and deploy this connector to Hasura DDN, you will need to fill out the [DDN Access Form](https://forms.gle/LkQWEDVryWPfYJzh6) in order to request access to the DDN limited alpha.
+
 ## Video Tutorials
 
 1. [Setup \[9:31\]](videos/1/README.markdown)
 1. [Predicates \[6:51\]](videos/2/README.markdown)
 1. [Sorting \[4:34\]](videos/3/README.markdown)
 1. Aggregates
+
+## Other Resources
+
+- [NDC Specification](https://hasura.github.io/ndc-spec/specification/)
+  - [Reference Implementation with Tutorial](https://github.com/hasura/ndc-spec/tree/main/ndc-reference/tests)
+- SDKs
+  - [NDC Rust SDK](https://github.com/hasura/ndc-hub)
+  - [NDC Typescript SDK](https://github.com/hasura/ndc-sdk-typescript) 
+- Examples of Native Connectors
+  - [Clickhouse](https://github.com/hasura/ndc-clickhouse) (Rust)
+  - [QDrant](https://github.com/hasura/ndc-qdrant) (Typescript)
+  - [Deno](https://github.com/hasura/ndc-typescript-deno) (Typescript)
 
 ## Getting Started
 
