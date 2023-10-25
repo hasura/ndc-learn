@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
-import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
 import { ComparisonTarget, Expression } from '@hasura/ndc-sdk-typescript/dist/generated/typescript/QueryRequest';
 
@@ -149,10 +149,6 @@ async function fetch_rows(state: State, request: QueryRequest): Promise<{
         }
     }
 
-    if (request.query.order_by != null) {
-        throw new NotSupported("Sorting is not supported");
-    }
-
     const parameters: any[] = [];
 
     const limit_clause = request.query.limit == null ? "" : `LIMIT ${request.query.limit}`;
@@ -160,7 +156,9 @@ async function fetch_rows(state: State, request: QueryRequest): Promise<{
 
     const where_clause = request.query.where == null ? "" : `WHERE ${visit_expression(parameters, request.query.where)}`;
 
-    const sql = `SELECT ${fields.join(", ")} FROM ${request.collection} ${where_clause} ${limit_clause} ${offset_clause}`;
+    const order_by_clause = request.query.order_by == null ? "" : `ORDER BY ${visit_order_by_elements(request.query.order_by.elements)}`;
+
+    const sql = `SELECT ${fields.join(", ")} FROM ${request.collection} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}`;
 
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
@@ -231,6 +229,29 @@ function visit_comparison_value(parameters: any[], target: ComparisonValue) {
             throw new NotSupported("column_comparisons are not supported");
         case 'variable':
             throw new NotSupported("Variables are not supported");
+    }
+}
+
+function visit_order_by_elements(elements: OrderByElement[]): String {
+    if (elements.length > 0) {
+        return elements.map(visit_order_by_element).join(", ");
+    } else {
+        return "1";
+    }
+}
+
+function visit_order_by_element(element: OrderByElement): String {
+    const direction = element.order_direction === 'asc' ? 'ASC' : 'DESC';
+
+    switch (element.target.type) {
+        case 'column':
+            if (element.target.path.length > 0) {
+                throw new NotSupported("Relationships are not supported");
+            }
+            return `${element.target.name} ${direction}`;
+        case 'single_column_aggregate':
+        case 'star_count_aggregate':
+            throw new NotSupported("order_by_aggregate are not supported");
     }
 }
 

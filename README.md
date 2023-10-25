@@ -10,7 +10,7 @@ The dependencies required to follow along here are minimal - you will need Node 
 
 1. [Setup \[9:31\]](videos/1/README.markdown)
 1. [Predicates \[6:51\]](videos/2/README.markdown)
-1. Sorting
+1. [Sorting \[4:34\]](videos/3/README.markdown)
 1. Aggregates
 
 ## Getting Started
