@@ -6,7 +6,7 @@ It is recommended that you first review the [Hasura NDC Specification](http://ha
 
 The dependencies required to follow along here are minimal - you will need Node and `npm` so that you can run the TypeScript compiler. If you'd like to follow along using the same test-driven approach, then you will also need a working `ndc-test` executable on your `PATH`. `ndc-test` can be installed using the Rust toolchain from the [`ndc-spec`](https://github.com/hasura/ndc-spec) repository.
 
-_Note_: if you would like to follow along with the demos, and deploy this connector to Hasura DDN, you will need to fill out the [DDN Access Form](https://forms.gle/LkQWEDVryWPfYJzh6) in order to request access to the DDN limited alpha.
+_Note_: if you would like to follow along with the demos, and deploy this connector to Hasura DDN, you will need to fill out the [DDN Access Form](https://forms.gle/zHTrVEbsQoBK8ecr5)  in order to request access to the DDN limited alpha.
 
 ## Video Tutorials
 
