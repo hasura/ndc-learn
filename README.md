@@ -41,3 +41,10 @@ Run the connector:
 ```sh
 node dist/index.js serve --configuration configuration.json
 ```
+
+To start from scratch and create the initial project:
+
+```sh
+npx tsc --init
+npm i @hasura/ndc-sdk-typescript sqlite sqlite3
+```
