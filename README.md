@@ -10,6 +10,8 @@ _Note_: if you would like to follow along with the demos, and deploy this connec
 
 ## Video Tutorials
 
+_Note_: in case your browser does not support the GitHub embedded videos in the following links, video files are provided in the same directories, for viewing locally.
+
 1. [Setup \[9:31\]](videos/1/README.markdown)
 1. [Predicates \[6:51\]](videos/2/README.markdown)
 1. [Sorting \[4:34\]](videos/3/README.markdown)
