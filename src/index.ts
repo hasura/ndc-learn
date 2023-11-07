@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
-import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
 import { ComparisonTarget, Expression } from '@hasura/ndc-sdk-typescript/dist/generated/typescript/QueryRequest';
 
@@ -127,8 +127,9 @@ async function query(configuration: Configuration, state: State, request: QueryR
     console.log(JSON.stringify(request, null, 2));
 
     const rows = request.query.fields && await fetch_rows(state, request);
+    const aggregates = request.query.aggregates && await fetch_aggregates(state, request);
 
-    return [{ rows }];
+    return [{ rows, aggregates }];
 }
 
 async function fetch_rows(state: State, request: QueryRequest): Promise<{
@@ -163,6 +164,51 @@ async function fetch_rows(state: State, request: QueryRequest): Promise<{
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
     return state.db.all(sql, ...parameters);
+}
+
+async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
+    [k: string]: unknown
+}> {
+    const target_list = [];
+
+    for (const aggregateName in request.query.aggregates) {
+        if (Object.prototype.hasOwnProperty.call(request.query.aggregates, aggregateName)) {
+            const aggregate = request.query.aggregates[aggregateName];
+            switch(aggregate.type) {
+                case 'star_count':
+                    target_list.push(`COUNT(1) AS ${aggregateName}`);
+                    break;
+                case 'column_count':
+                    target_list.push(`COUNT(${aggregate.distinct ? 'DISTINCT ' : ''}${aggregate.column}) AS ${aggregateName}`);
+                    break;
+                case 'single_column':
+                    throw new NotSupported("custom aggregates not yet supported");
+            }
+        }
+    }
+
+    const parameters: any[] = [];
+
+    const limit_clause = request.query.limit == null ? "" : `LIMIT ${request.query.limit}`;
+    const offset_clause = request.query.offset == null ? "" : `OFFSET ${request.query.offset}`;
+
+    const where_clause = request.query.where == null ? "" : `WHERE ${visit_expression(parameters, request.query.where)}`;
+
+    const order_by_clause = request.query.order_by == null ? "" : `ORDER BY ${visit_order_by_elements(request.query.order_by.elements)}`;
+
+    const sql = `SELECT ${target_list.join(", ")} FROM (
+                    SELECT * FROM ${request.collection} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}
+                )`;
+
+    console.log(JSON.stringify({ sql, parameters }, null, 2));
+
+    const result = state.db.get(sql, ...parameters);
+
+    if (result === undefined) {
+        throw new InternalServerError("Unable to fetch aggregates");
+    }
+
+    return result;
 }
 
 function visit_expression_with_parens(parameters: any[], expr: Expression): string {

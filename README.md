@@ -15,7 +15,7 @@ _Note_: in case your browser does not support the GitHub embedded videos in the 
 1. [Setup \[9:31\]](videos/1/README.markdown)
 1. [Predicates \[6:51\]](videos/2/README.markdown)
 1. [Sorting \[4:34\]](videos/3/README.markdown)
-1. Aggregates
+1. [Aggregates \[4:59\]](videos/4/README.markdown)
 
 ## Other Resources
 
