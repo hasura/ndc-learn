@@ -1,6 +1,6 @@
 # Let's Build a Connector - Part 4 - Aggregates
 
-_TODO_
+https://github.com/hasura/ndc-learn/assets/630306/fdb4eb12-c8a7-4425-bead-12459e257128
 
 ## Transcript
 
