@@ -6,6 +6,14 @@
                 "id": {},
                 "title": {},
                 "artist_id": {}
+            },
+            "foreignKeys": {
+                "album_artist": {
+                    "targetTable": "artists",
+                    "columns": {
+                        "artist_id": "id"
+                    }
+                }
             }
         },
         {
