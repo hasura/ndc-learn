@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Column": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ForeignKey": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "targetTable": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "targetTable",
+        "columns"
+      ],
+      "type": "object"
+    },
+    "RawConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "tables": {
+          "items": {
+            "$ref": "#/definitions/TableConfiguration"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tables"
+      ],
+      "type": "object"
+    },
+    "TableConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "additionalProperties": {
+            "$ref": "#/definitions/Column"
+          },
+          "type": "object"
+        },
+        "foreignKeys": {
+          "additionalProperties": {
+            "$ref": "#/definitions/ForeignKey"
+          },
+          "type": "object"
+        },
+        "tableName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tableName",
+        "columns",
+        "foreignKeys"
+      ],
+      "type": "object"
+    }
+  }
+}

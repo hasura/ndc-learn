@@ -1,0 +1,8 @@
+kind: AuthConfig
+version: v1
+definition:
+  allowRoleEmulationBy: admin
+  mode:
+    webhook:
+      method: Post
+      url: https://auth.pro.hasura.io/webhook/ddn?role=admin
