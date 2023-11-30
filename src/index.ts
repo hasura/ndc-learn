@@ -69,6 +69,7 @@ function get_capabilities(configuration: Configuration): CapabilitiesResponse {
         versions: "^0.1.0",
         capabilities: {
             query: {},
+            explain: {},
             relationships: {}
         }
     }
@@ -132,7 +133,12 @@ async function get_schema(configuration: Configuration): Promise<SchemaResponse>
 }
 
 async function explain(configuration: Configuration, state: State, request: QueryRequest): Promise<ExplainResponse> {
-    throw new Error("Function not implemented.");
+    const sql = fetch_rows_sql(request.collection, request.query, request.collection_relationships, []);
+    return {
+        details: {
+            sql
+        }
+    };
 }
 
 async function mutation(configuration: Configuration, state: State, request: MutationRequest): Promise<MutationResponse> {
@@ -153,7 +159,6 @@ async function query(configuration: Configuration, state: State, request: QueryR
 }
 
 function fetch_rows_sql(
-    state: State,
     collection: string,
     query: Query,
     collection_relationships: {
@@ -178,7 +183,7 @@ function fetch_rows_sql(
                     if (relationship === undefined) {
                         throw new BadRequest("Undefined relationship");
                     }
-                    fields.push(`${fetch_relationship(state, field.query, relationship, collection_relationships, `table_${table_id}`, parameters)} AS ${fieldName}`);
+                    fields.push(`${fetch_relationship(field.query, relationship, collection_relationships, `table_${table_id}`, parameters)} AS ${fieldName}`);
                     break;
             }
         }
@@ -249,7 +254,7 @@ async function fetch_rows(
 }[]> {
     const parameters: any[] = [];
 
-    const sql = fetch_rows_sql(state, collection, query, collection_relationships, parameters, additional_predicate);
+    const sql = fetch_rows_sql(collection, query, collection_relationships, parameters, additional_predicate);
 
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
@@ -259,7 +264,6 @@ async function fetch_rows(
 }
 
 function fetch_relationship(
-    state: State,
     query: Query,
     relationship: Relationship, collection_relationships: {
         [k: string]: Relationship;
@@ -273,14 +277,6 @@ function fetch_relationship(
         json_object_fields.push(`'${field_name}', ${field_name}`);
     }
 
-    const where: Expression = {
-        type: 'and',
-        expressions: [query.where ?? {
-            type: 'and',
-            expressions: []
-        }]
-    };
-
     const inner_table = `table_` + (table_gensym + 1);
 
     const additional_predicates: string[] = [];
@@ -290,7 +286,7 @@ function fetch_relationship(
         additional_predicates.push(`${outer_table}.${src_column} = ${inner_table}.${tgt_column}`);
     }
 
-    const subquery = fetch_rows_sql(state, relationship.target_collection, query, collection_relationships, parameters, additional_predicates.join(" AND "));
+    const subquery = fetch_rows_sql(relationship.target_collection, query, collection_relationships, parameters, additional_predicates.join(" AND "));
 
     const json_agg = relationship.relationship_type === 'object'
         ? `json_object(${json_object_fields.join(", ")})`
