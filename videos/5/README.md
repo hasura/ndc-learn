@@ -150,7 +150,7 @@ function reset_table_name() {
 
 We'll also call the new `reset_table_name` function at the top of the query function, to make sure our generated SQL is consistent across different runs of the function.
 
-Now let's implement the `fetch_relationship` function, which will generate the SQL for a field of type `relationship`. `fetch_relationship` is going to compute a JSON function over a row set fetched from the related table, so let's fill in the basic form of the SQL:
+Now let's implement the `fetch_relationship` function, which will generate the SQL for a field of type `relationship`. `fetch_relationship` is going to compute a JSON aggregation over a row set fetched from the related table, so let's fill in the basic form of the SQL:
 
 ```ts
 function fetch_relationship(
@@ -162,17 +162,19 @@ function fetch_relationship(
     outer_table: string,
     parameters: any[]
 ): string {
-    return `(SELECT ${json_agg} FROM (${subquery}))`;
+    return `(SELECT 
+                json_object(
+                    'rows', 
+                    json_group_array(
+                        json_object(${json_object_fields.join(", ")})
+                    )
+                )
+             FROM (${subquery})
+            )`;
 }
 ```
 
-The JSON function we use will depend on the `type` field of the relationship definition. For object relationships, we'll use the `json_object` function to build a single JSON object, and for arrays, we'll aggregate all related rows into using a JSON array using the `json_group_array` aggregate function:
-
-```ts
-const json_agg = relationship.relationship_type === 'object'
-    ? `json_object(${json_object_fields.join(", ")})`
-    : `json_group_array(json_object(${json_object_fields.join(", ")}))`;
-```
+We make sqlite do the work of constructing the response JSON in the correct form: an object, with a `rows` property containing a row set. We aggregate all related rows into using a JSON array using the `json_group_array` aggregate function.
 
 The `json_object_fields` array contains a list of field name and value pairs that we want to pass to the `json_object` function, and we'll build that from the `fields` property of the query:
 
@@ -238,21 +240,12 @@ function postprocess_fields(
                     break;
                 case 'relationship':
                     const row_data = JSON.parse(row[field_name]);
-                    const relationship = collection_relationships[field.relationship];
-                    if (relationship === undefined) {
-                        throw new BadRequest("Undefined relationship")
-                    }
-                    switch (relationship.relationship_type) {
-                        case 'object':
-                            new_row[field_name] = postprocess_fields(field.query, collection_relationships, row_data);
-                            break;
-                        case 'array':
-                            if (Array.isArray(row_data)) {
-                                new_row[field_name] = row_data.map((row) => postprocess_fields(field.query, collection_relationships, row));
-                            } else {
-                                throw new InternalServerError("Expected array in relationship response");
-                            }
-                            break;
+                    if (row_data.rows && Array.isArray(row_data.rows)) {
+                        new_row[field_name] = {
+                            rows: row_data.rows.map((row: any) => postprocess_fields(field.query, collection_relationships, row))
+                        };
+                    } else {
+                        throw new InternalServerError("Expected array in relationship response");
                     }
                     break;
             }

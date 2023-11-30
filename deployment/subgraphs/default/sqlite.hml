@@ -1,28 +1,20 @@
-kind: CompatibilityConfig
-date: 2023-10-19
----
-kind: AuthConfig
-version: v1
-definition:
-  allowRoleEmulationBy: admin
-  mode:
-    webhook:
-      method: Post
-      url: https://auth.pro.hasura.io/webhook/ddn?role=admin
----
 kind: DataConnector
-version: v1
+version: v2
 definition:
   name: sqlite
   url:
-    # singleUrl: 'http://0.0.0.0:8100'
-    singleUrl: 'http://us-west2-a-001.secure-connect.cloud.internal:2008'
+    singleUrl: 
+      value: 'http://localhost:8100'
   schema:
     collections:
       - arguments: {}
         name: albums
         deletable: false
-        foreign_keys: {}
+        foreign_keys:
+          album_artist:
+            foreign_collection: artists
+            column_mapping:
+              artist_id: id
         uniqueness_constraints: {}
         type: albums
       - arguments: {}
@@ -62,8 +54,7 @@ definition:
       any:
         aggregate_functions: {}
         comparison_operators: {}
-        update_operators: {}
-  
+
 ---
 kind: ScalarType
 version: v1
@@ -79,22 +70,24 @@ definition:
   dataConnectorName: sqlite
   dataConnectorScalarType: any
   representation: any
-  graphql: 
-    comparisonExpressionTypeName: any_comparison_exp
+  graphql:
+    comparisonExpressionTypeName: anyComparisonExp
+
 ---
 kind: ObjectType
 version: v1
 definition:
   name: albums
-  fields:
-    - name: id
-      type: any
-    - name: title
-      type: any
-    - name: artist_id
-      type: any
   graphql:
     typeName: albums
+    inputTypeName: albumsInput
+  fields:
+    - name: id
+      type: any!
+    - name: title
+      type: any!
+    - name: artist_id
+      type: any!
 
 ---
 kind: TypePermissions
@@ -108,31 +101,6 @@ definition:
           - id
           - title
           - artist_id
-
----
-kind: ObjectType
-version: v1
-definition:
-  name: artists
-  fields:
-    - name: id
-      type: any
-    - name: name
-      type: any
-  graphql:
-    typeName: artists
-
----
-kind: TypePermissions
-version: v1
-definition:
-  typeName: artists
-  permissions:
-    - role: admin
-      output:
-        allowedFields:
-          - id
-          - name
 
 ---
 kind: Model
@@ -160,15 +128,16 @@ definition:
     - fieldName: artist_id
       orderByDirections:
         enableAll: true
-  source:
-    dataConnectorName: sqlite
-    collection: albums
+  arguments: []
   graphql:
     selectUniques: []
     selectMany:
       queryRootField: albums
-    filterExpressionType: albums_bool_exp
-    orderByExpressionType: albums_order_by
+    filterExpressionType: albumsBoolExp
+    orderByExpressionType: albumsOrderBy
+  source:
+    collection: albums
+    dataConnectorName: sqlite
 
 ---
 kind: ModelPermissions
@@ -179,6 +148,32 @@ definition:
     - role: admin
       select:
         filter: null
+
+---
+kind: ObjectType
+version: v1
+definition:
+  name: artists
+  graphql:
+    typeName: artists
+    inputTypeName: artistsInput
+  fields:
+    - name: id
+      type: any!
+    - name: name
+      type: any!
+
+---
+kind: TypePermissions
+version: v1
+definition:
+  typeName: artists
+  permissions:
+    - role: admin
+      output:
+        allowedFields:
+          - id
+          - name
 
 ---
 kind: Model
@@ -200,15 +195,16 @@ definition:
     - fieldName: name
       orderByDirections:
         enableAll: true
-  source:
-    dataConnectorName: sqlite
-    collection: artists
+  arguments: []
   graphql:
     selectUniques: []
     selectMany:
       queryRootField: artists
-    filterExpressionType: artists_bool_exp
-    orderByExpressionType: artists_order_by
+    filterExpressionType: artistsBoolExp
+    orderByExpressionType: artistsOrderBy
+  source:
+    collection: artists
+    dataConnectorName: sqlite
 
 ---
 kind: ModelPermissions
@@ -228,8 +224,8 @@ definition:
   source: albums
   target:
     model:
-      name: artists
       relationshipType: Object
+      name: artists
   mapping:
     - source:
         fieldPath:
@@ -246,8 +242,8 @@ definition:
   source: artists
   target:
     model:
-      name: albums
       relationshipType: Array
+      name: albums
   mapping:
     - source:
         fieldPath:

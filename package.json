@@ -3,7 +3,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@hasura/ndc-sdk-typescript": "^1.2.3",
+    "@hasura/ndc-sdk-typescript": "^1.2.5",
     "sqlite": "^5.0.1",
     "sqlite3": "^5.1.6"
   },

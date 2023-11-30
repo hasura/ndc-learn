@@ -1,8 +1,8 @@
+import * as fs from 'fs';
 import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
-import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, Field, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, Field, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
-import { ComparisonTarget, Expression, Query } from '@hasura/ndc-sdk-typescript/dist/generated/typescript/QueryRequest';
 
 type RawConfiguration = {
     tables: TableConfiguration[];
@@ -28,11 +28,7 @@ type State = {
 };
 
 function get_raw_configuration_schema(): JSONSchemaObject {
-    throw new Error("Function not implemented.");
-}
-
-function get_configuration_schema(): JSONSchemaObject {
-    throw new Error("Function not implemented.");
+    return JSON.parse(fs.readFileSync("schema.json").toString());
 }
 
 function make_empty_configuration(): RawConfiguration {
@@ -99,8 +95,7 @@ async function get_schema(configuration: Configuration): Promise<SchemaResponse>
     let scalar_types: { [k: string]: ScalarType } = {
         'any': {
             aggregate_functions: {},
-            comparison_operators: {},
-            update_operators: {},
+            comparison_operators: {}
         }
     };
 
@@ -145,12 +140,25 @@ async function mutation(configuration: Configuration, state: State, request: Mut
     throw new Error("Function not implemented.");
 }
 
+
 let table_gensym = 0;
+
+function new_table_name(): string {
+    return `table_${++table_gensym}`;
+}
+
+function peek_table_name(): string {
+    return `table_${table_gensym + 1}`;
+}
+
+function reset_table_name() {
+    table_gensym = 0;
+}
 
 async function query(configuration: Configuration, state: State, request: QueryRequest): Promise<QueryResponse> {
     console.log(JSON.stringify(request, null, 2));
 
-    table_gensym = 0;
+    reset_table_name();
 
     const rows = request.query.fields && await fetch_rows(state, request.collection, request.query, request.collection_relationships);
     const aggregates = request.query.aggregates && await fetch_aggregates(state, request);
@@ -169,7 +177,7 @@ function fetch_rows_sql(
 ): string {
     const fields = [];
 
-    const table_id = ++table_gensym;
+    const table_name = new_table_name();
 
     for (const fieldName in query.fields) {
         if (Object.prototype.hasOwnProperty.call(query.fields, fieldName)) {
@@ -183,7 +191,7 @@ function fetch_rows_sql(
                     if (relationship === undefined) {
                         throw new BadRequest("Undefined relationship");
                     }
-                    fields.push(`${fetch_relationship(field.query, relationship, collection_relationships, `table_${table_id}`, parameters)} AS ${fieldName}`);
+                    fields.push(`${fetch_relationship(field.query, relationship, collection_relationships, table_name, parameters)} AS ${fieldName}`);
                     break;
             }
         }
@@ -196,7 +204,7 @@ function fetch_rows_sql(
 
     const order_by_clause = query.order_by == null ? "" : `ORDER BY ${visit_order_by_elements(query.order_by.elements)}`;
 
-    const sql = `SELECT ${fields.join(", ")} FROM ${collection} AS table_${table_id} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}`;
+    const sql = `SELECT ${fields.join(", ")} FROM ${collection} AS ${table_name} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}`;
 
     return sql;
 }
@@ -217,21 +225,12 @@ function postprocess_fields(query: Query, collection_relationships: { [k: string
                     break;
                 case 'relationship':
                     const row_data = JSON.parse(row[field_name]);
-                    const relationship = collection_relationships[field.relationship];
-                    if (relationship === undefined) {
-                        throw new BadRequest("Undefined relationship")
-                    }
-                    switch (relationship.relationship_type) {
-                        case 'object':
-                            new_row[field_name] = postprocess_fields(field.query, collection_relationships, row_data);
-                            break;
-                        case 'array':
-                            if (Array.isArray(row_data)) {
-                                new_row[field_name] = row_data.map((row) => postprocess_fields(field.query, collection_relationships, row));
-                            } else {
-                                throw new InternalServerError("Expected array in relationship response");
-                            }
-                            break;
+                    if (row_data.rows && Array.isArray(row_data.rows)) {
+                        new_row[field_name] = {
+                            rows: row_data.rows.map((row: any) => postprocess_fields(field.query, collection_relationships, row))
+                        };
+                    } else {
+                        throw new InternalServerError("Expected array in relationship response");
                     }
                     break;
             }
@@ -277,7 +276,7 @@ function fetch_relationship(
         json_object_fields.push(`'${field_name}', ${field_name}`);
     }
 
-    const inner_table = `table_` + (table_gensym + 1);
+    const inner_table = peek_table_name();
 
     const additional_predicates: string[] = [];
 
@@ -288,11 +287,15 @@ function fetch_relationship(
 
     const subquery = fetch_rows_sql(relationship.target_collection, query, collection_relationships, parameters, additional_predicates.join(" AND "));
 
-    const json_agg = relationship.relationship_type === 'object'
-        ? `json_object(${json_object_fields.join(", ")})`
-        : `json_group_array(json_object(${json_object_fields.join(", ")}))`;
-
-    return `(SELECT ${json_agg} FROM (${subquery}))`;
+    return `(SELECT 
+                json_object(
+                    'rows', 
+                    json_group_array(
+                        json_object(${json_object_fields.join(", ")})
+                    )
+                )
+             FROM (${subquery})
+            )`;
 }
 
 async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
@@ -432,7 +435,6 @@ function visit_order_by_element(element: OrderByElement): String {
 
 const connector: Connector<RawConfiguration, Configuration, State> = {
     get_raw_configuration_schema,
-    get_configuration_schema,
     make_empty_configuration,
     update_configuration,
     validate_raw_configuration,
