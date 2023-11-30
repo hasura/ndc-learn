@@ -21,7 +21,8 @@
             "columns": {
                 "id": {},
                 "name": {}
-            }
+            },
+            "foreignKeys": {}
         }
     ]
 }

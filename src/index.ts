@@ -3,6 +3,7 @@ import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
 import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, Field, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
+import raw_configuation_schema from "./schema/raw_configuation.json";
 
 type RawConfiguration = {
     tables: TableConfiguration[];
@@ -28,7 +29,7 @@ type State = {
 };
 
 function get_raw_configuration_schema(): JSONSchemaObject {
-    return JSON.parse(fs.readFileSync("schema.json").toString());
+    return raw_configuation_schema as JSONSchemaObject;
 }
 
 function make_empty_configuration(): RawConfiguration {

@@ -1,5 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "tables": {
+      "items": {
+        "$ref": "#/definitions/TableConfiguration"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "tables"
+  ],
+  "type": "object",
   "definitions": {
     "Column": {
       "additionalProperties": false,
