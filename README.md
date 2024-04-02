@@ -37,7 +37,7 @@ npm run build
 Run the connector:
 
 ```sh
-node dist/index.js serve --configuration configuration.json
+node dist/index.js serve --configuration .
 ```
 
 To start from scratch and create the initial project:

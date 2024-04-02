@@ -1,10 +1,11 @@
 import sqlite3 from 'sqlite3';
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
 import { Database, open } from 'sqlite';
-import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonValue, Connector, ExplainResponse, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
-import { JSONSchemaObject } from "@json-schema-tools/meta-schema";
-import { ComparisonTarget, Expression } from '@hasura/ndc-sdk-typescript/dist/generated/typescript/QueryRequest';
+import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 
 type RawConfiguration = {
+    filename: string,
     tables: TableConfiguration[];
 };
 
@@ -21,53 +22,45 @@ type State = {
     db: Database;
 };
 
-function get_raw_configuration_schema(): JSONSchemaObject {
-    throw new Error("Function not implemented.");
+async function parseConfiguration(configurationDir: string): Promise<Configuration> {
+    const configuration_file = resolve(configurationDir, 'configuration.json');
+    const configuration_data = await readFile(configuration_file);
+    const configuration = JSON.parse(configuration_data.toString());
+    return {
+        filename: resolve(configurationDir, 'database.db'),
+        ...configuration
+    };
 }
 
-function get_configuration_schema(): JSONSchemaObject {
-    throw new Error("Function not implemented.");
-}
-
-function make_empty_configuration(): RawConfiguration {
-    throw new Error("Function not implemented.");
-}
-
-async function update_configuration(rawConfiguration: RawConfiguration): Promise<RawConfiguration> {
-    throw new Error("Function not implemented.");
-}
-
-async function validate_raw_configuration(rawConfiguration: RawConfiguration): Promise<Configuration> {
-    return rawConfiguration;
-}
-
-async function try_init_state(configuration: Configuration, metrics: unknown): Promise<State> {
+async function tryInitState(configuration: Configuration, metrics: unknown): Promise<State> {
     const db = await open({
-        filename: 'database.db',
+        filename: configuration.filename,
         driver: sqlite3.Database
     })
 
     return { db };
 }
 
-async function fetch_metrics(configuration: Configuration, state: State): Promise<undefined> {
+async function fetchMetrics(configuration: Configuration, state: State): Promise<undefined> {
     throw new Error("Function not implemented.");
 }
 
-async function health_check(configuration: Configuration, state: State): Promise<undefined> {
+async function healthCheck(configuration: Configuration, state: State): Promise<undefined> {
     throw new Error("Function not implemented.");
 }
 
-function get_capabilities(configuration: Configuration): CapabilitiesResponse {
+function getCapabilities(configuration: Configuration): CapabilitiesResponse {
     return {
-        versions: "^0.1.0",
+        version: "0.1.1",
         capabilities: {
-            query: {}
+            query: { aggregates: {} },
+            mutation: {},
+            relationships: {}
         }
     }
 }
 
-async function get_schema(configuration: Configuration): Promise<SchemaResponse> {
+async function getSchema(configuration: Configuration): Promise<SchemaResponse> {
     let collections: CollectionInfo[] = configuration.tables.map((table) => {
         return {
             arguments: {},
@@ -82,8 +75,11 @@ async function get_schema(configuration: Configuration): Promise<SchemaResponse>
     let scalar_types: { [k: string]: ScalarType } = {
         'any': {
             aggregate_functions: {},
-            comparison_operators: {},
-            update_operators: {},
+            comparison_operators: {
+                'eq': {
+                    type: 'equal'
+                }
+            },
         }
     };
 
@@ -115,7 +111,11 @@ async function get_schema(configuration: Configuration): Promise<SchemaResponse>
     };
 }
 
-async function explain(configuration: Configuration, state: State, request: QueryRequest): Promise<ExplainResponse> {
+async function queryExplain(configuration: Configuration, state: State, request: QueryRequest): Promise<ExplainResponse> {
+    throw new Error("Function not implemented.");
+}
+
+async function mutationExplain(configuration: Configuration, state: State, request: MutationRequest): Promise<ExplainResponse> {
     throw new Error("Function not implemented.");
 }
 
@@ -155,15 +155,17 @@ async function fetch_rows(state: State, request: QueryRequest): Promise<{
     const limit_clause = request.query.limit == null ? "" : `LIMIT ${request.query.limit}`;
     const offset_clause = request.query.offset == null ? "" : `OFFSET ${request.query.offset}`;
 
-    const where_clause = request.query.where == null ? "" : `WHERE ${visit_expression(parameters, request.query.where)}`;
+    const where_clause = request.query.predicate == null ? "" : `WHERE ${visit_expression(parameters, request.query.predicate)}`;
 
     const order_by_clause = request.query.order_by == null ? "" : `ORDER BY ${visit_order_by_elements(request.query.order_by.elements)}`;
 
-    const sql = `SELECT ${fields.join(", ")} FROM ${request.collection} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}`;
+    const sql = `SELECT ${fields.length ? fields.join(", ") : '1 AS __empty'} FROM ${request.collection} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}`;
 
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
-    return state.db.all(sql, ...parameters);
+    const rows = await state.db.all(sql, ...parameters);
+
+    return rows.map((row) => { delete row.__empty; return row; });
 }
 
 async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
@@ -174,7 +176,7 @@ async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
     for (const aggregateName in request.query.aggregates) {
         if (Object.prototype.hasOwnProperty.call(request.query.aggregates, aggregateName)) {
             const aggregate = request.query.aggregates[aggregateName];
-            switch(aggregate.type) {
+            switch (aggregate.type) {
                 case 'star_count':
                     target_list.push(`COUNT(1) AS ${aggregateName}`);
                     break;
@@ -192,17 +194,19 @@ async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
     const limit_clause = request.query.limit == null ? "" : `LIMIT ${request.query.limit}`;
     const offset_clause = request.query.offset == null ? "" : `OFFSET ${request.query.offset}`;
 
-    const where_clause = request.query.where == null ? "" : `WHERE ${visit_expression(parameters, request.query.where)}`;
+    const where_clause = request.query.predicate == null ? "" : `WHERE ${visit_expression(parameters, request.query.predicate)}`;
 
     const order_by_clause = request.query.order_by == null ? "" : `ORDER BY ${visit_order_by_elements(request.query.order_by.elements)}`;
 
-    const sql = `SELECT ${target_list.join(", ")} FROM (
+    const sql = `SELECT ${target_list.length ? target_list.join(", ") : "1 AS __empty"} FROM (
                     SELECT * FROM ${request.collection} ${where_clause} ${order_by_clause} ${limit_clause} ${offset_clause}
                 )`;
 
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
-    const result = state.db.get(sql, ...parameters);
+    const result = await state.db.get(sql, ...parameters);
+
+    delete result.__empty;
 
     if (result === undefined) {
         throw new InternalServerError("Unable to fetch aggregates");
@@ -239,14 +243,12 @@ function visit_expression(parameters: any[], expr: Expression): string {
                     throw new BadRequest("Unknown comparison operator");
             }
         case "binary_comparison_operator":
-            switch (expr.operator.type) {
-                case 'equal':
+            switch (expr.operator) {
+                case 'eq':
                     return `${visit_comparison_target(expr.column)} = ${visit_comparison_value(parameters, expr.value)}`
                 default:
                     throw new BadRequest("Unknown comparison operator");
             }
-        case "binary_array_comparison_operator":
-            throw new NotSupported("binary_array_comparison_operator is not supported");
         case "exists":
             throw new NotSupported("exists is not supported");
         default:
@@ -301,18 +303,15 @@ function visit_order_by_element(element: OrderByElement): String {
     }
 }
 
-const connector: Connector<RawConfiguration, Configuration, State> = {
-    get_raw_configuration_schema,
-    get_configuration_schema,
-    make_empty_configuration,
-    update_configuration,
-    validate_raw_configuration,
-    try_init_state,
-    fetch_metrics,
-    health_check,
-    get_capabilities,
-    get_schema,
-    explain,
+const connector: Connector<Configuration, State> = {
+    parseConfiguration,
+    tryInitState,
+    fetchMetrics,
+    healthCheck,
+    getCapabilities,
+    getSchema,
+    queryExplain,
+    mutationExplain,
     mutation,
     query
 };
