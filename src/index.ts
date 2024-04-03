@@ -51,7 +51,7 @@ async function healthCheck(configuration: Configuration, state: State): Promise<
 
 function getCapabilities(configuration: Configuration): CapabilitiesResponse {
     return {
-        version: "0.1.1",
+        version: "0.1.2",
         capabilities: {
             query: { aggregates: {} },
             mutation: {},
