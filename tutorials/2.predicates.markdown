@@ -1,20 +1,52 @@
 # Let's Build a Connector - Part 2 - Predicates
 
-https://github.com/hasura/ndc-sqlite/assets/630306/5eb5d2a0-55f0-46ed-add7-8e3daefe70e3
+In the last tutorial, we set up a basic data connector for a sqlite database running locally. In this tutorial, we'll start to implement predicates by turning them into where clauses in the generated SQL.
 
-## Transcript
-
-Hi everyone.
-
-In the last video, we set up a basic data connector for a sqlite database running locally. In this video, we'll start to implement predicates by turning them into where clauses in the generated SQL.
-
-Let's pick up from where we left off. We can modify our SQL template to include a `WHERE clause`:
+Let's pick up from where we left off. We can modify our SQL template to include a `WHERE` clause:
 
 ```typescript
-const sql = `SELECT ${fields.join(", ")} FROM ${request.collection} ${where_clause} ${limit_clause} ${offset_clause}`;
+const sql = `SELECT ${fields.length ? fields.join(", ") : '1 AS __empty'} FROM ${request.collection} ${where_clause} ${limit_clause} ${offset_clause}`;
 ```
 
 To generate our `WHERE` clause, we will need to interpret the contents of the `where` property of the query request. To see what this will look like, we can find some examples in the snapshots we generated last time.
+
+Here's one example:
+
+```json
+{
+  "collection": "albums",
+  "query": {
+    "fields": {
+      "id": {
+        "type": "column",
+        "column": "id",
+        "fields": null
+      },
+      "title": {
+        "type": "column",
+        "column": "title",
+        "fields": null
+      }
+    },
+    "limit": 10,
+    "predicate": {
+      "type": "binary_comparison_operator",
+      "column": {
+        "type": "column",
+        "name": "artist_id",
+        "path": []
+      },
+      "operator": "eq",
+      "value": {
+        "type": "scalar",
+        "value": 5
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}
+```
 
 This predicate expression has type `binary_comparison_operator`, which means it is a predicate which compares a column to a value using an operator - in this case, the equality operator - this predicate asserts that the `artist_id` column equals the literal value `5`.
 
@@ -117,11 +149,11 @@ switch (expr.operator) {
 }
 ```
 
-For `binary_comparison_operator` expressions, we can switch on `expr.operator.type`.  We will only implement the `equal` operator, because our schema doesn't advertise any custom binary operators. If we wanted to add another operator, like a "greater than" operator for numbers, we would do that here, and also advertise that operator in the NDC schema response.
+For `binary_comparison_operator` expressions, we can switch on `expr.operator`.  We only need to implement the `eq` operator, because our schema doesn't advertise any other custom binary operators. If we wanted to add another operator, like a "greater than" operator for numbers, we would do that here, and also advertise that operator in the NDC schema response.
 
 ```typescript
-switch (expr.operator.type) {
-    case 'equal':
+switch (expr.operator) {
+    case 'eq':
         return `${visit_comparison_target(expr.column)} = ${visit_comparison_value(parameters, expr.value)}`
     default:
         throw new BadRequest("Unknown comparison operator");
@@ -164,44 +196,22 @@ In the `visit_comparison_target` function, we only handle the `column` case wher
 
 In the `visit_comparison_value` function, we only handle the `scalar` case, in which we push the value onto our parameter list. Again, the other cases correspond to capabilities we haven't implemented yet.
 
-The other two expression types are unsupported for now, so we'll throw an error here. We can come back to these later.
+`exists` expressions are unsupported for now, so we'll throw an error here. We can come back to these later.
 
 ```typescript
-case "binary_array_comparison_operator":
 case "exists":
     throw new NotSupported("Unsupported expression type");
 ```
 
 Now let's remove our old snapshots and re-run the test suite.
 
-We can see that predicate tests are passing, but some other test cases are not. That's okay - we'll keep iterating over the next few videos until we have all green tests here.
-
-In our snapshots directory, we can also see that we're returning the correct data for some simple predicate queries. This query searches for albums for artist with ID `5`, and we can see that the response contains the correct rows.
-
-Now let's deploy to Hasura and see how the GraphQL schema looks.
-
-Let's add a `where` clause to fetch the albums for artist ID `1`.
-
-We can see that the generated SQL is correct and that we're correctly parameterizing the query as well.
-
-Let's try a query which uses a logical operator:
-
-```graphql
-query MyQuery {
-  albums(where: {
-    _or: [
-      {artist_id: {_eq: 1}}, 
-      {artist_id: {_eq: 2}}, 
-      {artist_id: {_eq: 5}}
-    ]
-  }) {
-    title
-  }
-}
+```sh
+rm -rf snapshots
+ndc-test test --endpoint http://localhost:8080/ --snapshots-dir snapshots
 ```
 
-Again, we generate valid SQL and parameters, although we do have too many parentheses here. That's something we can improve later, but it's better to err on the safe side for now.
+We can see that predicate tests are passing, but some other test cases are not. That's okay - we'll keep iterating over the next few tutorials until we have all green tests here.
 
-That's all for this video. We've added support for basic where clauses, and we'll come back and fill in some of the missing expression types later, but next time, we'll take a look at order by clauses.
+In our snapshots directory, we can also see that we're returning the correct data for some simple predicate queries.
 
-Thanks for watching!
+That's all for this tutorial. We've added support for basic where clauses, and we'll come back and fill in some of the missing expression types later, but next time, we'll take a look at order by clauses.

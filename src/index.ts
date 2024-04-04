@@ -4,12 +4,10 @@ import { resolve } from 'path';
 import { Database, open } from 'sqlite';
 import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, QueryRequest, QueryResponse, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 
-type RawConfiguration = {
+type Configuration = {
     filename: string,
     tables: TableConfiguration[];
 };
-
-type Configuration = RawConfiguration;
 
 type TableConfiguration = {
     tableName: string;

@@ -8,10 +8,10 @@ The dependencies required to follow along here are minimal - you will need Node 
 
 ## Tutorials
 
-1. [Setup \[9:31\]](tutorials/1/README.markdown)
-1. [Predicates \[6:51\]](tutorials/2/README.markdown)
-1. [Sorting \[4:34\]](tutorials/3/README.markdown)
-1. [Aggregates \[4:59\]](tutorials/4/README.markdown)
+1. [Setup](tutorials/1.setup.markdown)
+1. [Predicates](tutorials/2.predicates.markdown)
+1. [Sorting](tutorials/3.sorting.markdown)
+1. [Aggregates](tutorials/4.aggregates.markdown)
 
 ## Other Resources
 
