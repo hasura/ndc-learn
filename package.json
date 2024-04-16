@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "ndc-test replay --endpoint http://localhost:8080 --snapshots-dir snapshots"
   },
   "dependencies": {
     "@hasura/ndc-sdk-typescript": "^4.3.0",

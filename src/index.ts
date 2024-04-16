@@ -15,7 +15,9 @@ type TableConfiguration = {
     foreignKeys: { [k: string]: ForeignKey };
 };
 
-type Column = {};
+type Column = {
+    type: string;
+};
 
 type ForeignKey = {
     targetTable: string,
@@ -89,8 +91,37 @@ async function getSchema(configuration: Configuration): Promise<SchemaResponse> 
     });
 
     let scalar_types: { [k: string]: ScalarType } = {
-        'any': {
-            aggregate_functions: {},
+        'string': {
+            aggregate_functions: {
+                'csv': {
+                    result_type: {
+                        type: 'named',
+                        name: 'string'
+                    }
+                }
+            },
+            comparison_operators: {
+                'eq': {
+                    type: 'equal'
+                },
+                'like': {
+                    type: 'custom',
+                    argument_type: {
+                        type: 'named',
+                        name: 'string'
+                    }
+                }
+            },
+        },
+        'numeric': {
+            aggregate_functions: {
+                'total': {
+                    result_type: {
+                        type: 'named',
+                        name: 'numeric'
+                    }
+                }
+            },
             comparison_operators: {
                 'eq': {
                     type: 'equal'
@@ -105,10 +136,12 @@ async function getSchema(configuration: Configuration): Promise<SchemaResponse> 
         let fields: { [k: string]: ObjectField } = {};
 
         for (const columnName in table.columns) {
+            let column = table.columns[columnName];
+
             fields[columnName] = {
                 type: {
                     type: 'named',
-                    name: 'any'
+                    name: column.type
                 }
             };
         }
@@ -332,7 +365,16 @@ async function fetch_aggregates(state: State, request: QueryRequest): Promise<{
                     target_list.push(`COUNT(${aggregate.distinct ? 'DISTINCT ' : ''}${aggregate.column}) AS ${aggregateName}`);
                     break;
                 case 'single_column':
-                    throw new NotSupported("custom aggregates not yet supported");
+                    switch (aggregate.function) {
+                        case 'total':
+                            target_list.push(`TOTAL(${aggregate.column}) AS ${aggregateName}`);
+                            break;
+                        case 'csv':
+                            target_list.push(`GROUP_CONCAT(${aggregate.column}, ',') AS ${aggregateName}`);
+                            break;
+                        default:
+                            throw new BadRequest("Unknown aggregate function");
+                    }
             }
         }
     }
@@ -408,6 +450,8 @@ function visit_expression(
             switch (expr.operator) {
                 case 'eq':
                     return `${visit_comparison_target(expr.column)} = ${visit_comparison_value(parameters, expr.value)}`
+                case 'like':
+                    return `${visit_comparison_target(expr.column)} LIKE ${visit_comparison_value(parameters, expr.value)}`
                 default:
                     throw new BadRequest("Unknown comparison operator");
             }
