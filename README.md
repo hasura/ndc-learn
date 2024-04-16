@@ -13,6 +13,7 @@ The dependencies required to follow along here are minimal - you will need Node 
 1. [Sorting](tutorials/3.sorting.markdown)
 1. [Aggregates](tutorials/4.aggregates.markdown)
 1. [Relationships](tutorials/5.relationships.markdown)
+1. [Custom Operators](tutorials/6.operators.markdown)
 
 ## Other Resources
 

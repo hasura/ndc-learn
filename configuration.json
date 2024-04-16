@@ -3,9 +3,15 @@
         {
             "tableName": "albums",
             "columns": {
-                "id": {},
-                "title": {},
-                "artist_id": {}
+                "id": {
+                    "type": "numeric"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "artist_id": {
+                    "type": "numeric"
+                }
             },
             "foreignKeys": {
                 "album_artist": {
@@ -19,8 +25,12 @@
         {
             "tableName": "artists",
             "columns": {
-                "id": {},
-                "name": {}
+                "id": {
+                    "type": "numeric"
+                },
+                "name": {
+                    "type": "string"
+                }
             },
             "foreignKeys": {}
         }

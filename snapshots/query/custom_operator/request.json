@@ -1,0 +1,28 @@
+{
+  "collection": "albums",
+  "query": {
+    "fields": {
+      "title": {
+        "type": "column",
+        "column": "title",
+        "fields": null
+      }
+    },
+    "limit": 10,
+    "predicate": {
+      "type": "binary_comparison_operator",
+      "column": {
+        "type": "column",
+        "name": "title",
+        "path": []
+      },
+      "operator": "like",
+      "value": {
+        "type": "scalar",
+        "value": "A%"
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}
