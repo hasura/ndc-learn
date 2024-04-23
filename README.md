@@ -48,3 +48,24 @@ npm i typescript
 npx tsc --init
 npm i @hasura/ndc-sdk-typescript sqlite sqlite3
 ```
+
+### Running the connector using Docker
+
+The provided `Dockerfile` can be used to build and run the connector inside a Docker container:
+
+```sh
+docker build -t ndc-learn .
+docker run -p 8080:8080 -it ndc-learn
+```
+
+### Local development using v3-engine
+
+The `docker-compose.yaml` file provides an environment with the open source Hasura `v3-engine`, this connector, and Jaeger for tracing:
+
+```sh
+docker compose up
+open http://localhost:3000 # Graphiql
+open http://localhost:4002 # Jaeger
+```
+
+When using Graphiql, remember to provide the appropriate headers. Specifically, `x-hasura-role` can be set to `admin` for testing.
