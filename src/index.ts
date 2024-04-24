@@ -1,8 +1,10 @@
+import opentelemetry from '@opentelemetry/api';
 import sqlite3 from 'sqlite3';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import { Database, open } from 'sqlite';
 import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { withActiveSpan } from "@hasura/ndc-sdk-typescript/instrumentation";
 
 type Configuration = {
     filename: string,
@@ -48,11 +50,10 @@ async function tryInitState(configuration: Configuration, metrics: unknown): Pro
 }
 
 async function fetchMetrics(configuration: Configuration, state: State): Promise<undefined> {
-    throw new Error("Function not implemented.");
 }
 
 async function healthCheck(configuration: Configuration, state: State): Promise<undefined> {
-    throw new Error("Function not implemented.");
+    await state.db.all("SELECT 1");
 }
 
 function getCapabilities(configuration: Configuration): CapabilitiesResponse {
@@ -293,9 +294,13 @@ async function fetch_rows(
 
     console.log(JSON.stringify({ sql, parameters }, null, 2));
 
-    const rows = await state.db.all(sql, ...parameters);
+    const spanAttributes = { sql };
+    const tracer = opentelemetry.trace.getTracer("ndc-learn");
 
-    return rows.map((row) => postprocess_fields(query, collection_relationships, row))
+    return withActiveSpan(tracer, "run SQL", async () => {
+        const rows = await state.db.all(sql, ...parameters);
+        return rows.map((row) => postprocess_fields(query, collection_relationships, row))
+    }, spanAttributes);
 }
 
 function fetch_relationship(
