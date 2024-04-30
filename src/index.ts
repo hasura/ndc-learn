@@ -5,6 +5,7 @@ import { resolve } from 'path';
 import { Database, open } from 'sqlite';
 import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { withActiveSpan } from "@hasura/ndc-sdk-typescript/instrumentation";
+import { Counter, Registry } from 'prom-client';
 
 type Configuration = {
     filename: string,
@@ -28,7 +29,12 @@ type ForeignKey = {
 
 type State = {
     db: Database;
+    metrics: Metrics;
 };
+
+type Metrics = {
+    query_count: Counter;
+}
 
 async function parseConfiguration(configurationDir: string): Promise<Configuration> {
     const configuration_file = resolve(configurationDir, 'configuration.json');
@@ -40,13 +46,21 @@ async function parseConfiguration(configurationDir: string): Promise<Configurati
     };
 }
 
-async function tryInitState(configuration: Configuration, metrics: unknown): Promise<State> {
+async function tryInitState(configuration: Configuration, registry: Registry): Promise<State> {
     const db = await open({
         filename: configuration.filename,
         driver: sqlite3.Database
-    })
+    });
 
-    return { db };
+    const query_count = new Counter({
+        name: 'query_count',
+        help: 'Number of queries executed since the connector was started',
+        labelNames: ["table"]
+    });
+    registry.registerMetric(query_count);
+    const metrics = { query_count };
+
+    return { db, metrics };
 }
 
 async function fetchMetrics(configuration: Configuration, state: State): Promise<undefined> {
@@ -199,6 +213,8 @@ async function query(configuration: Configuration, state: State, request: QueryR
 
     const rows = request.query.fields && await fetch_rows(state, request.collection, request.query, request.collection_relationships);
     const aggregates = request.query.aggregates && await fetch_aggregates(state, request);
+
+    state.metrics.query_count.labels(request.collection).inc();
 
     return [{ rows, aggregates }];
 }
@@ -468,9 +484,9 @@ function visit_expression(
                         throw new BadRequest("Undefined relationship");
                     }
                     let subquery = fetch_relationship_rows({
-                            fields: {},
-                            predicate: expr.predicate,
-                        },
+                        fields: {},
+                        predicate: expr.predicate,
+                    },
                         relationship,
                         collection_relationships,
                         collection,
@@ -525,8 +541,7 @@ function visit_order_by_element(element: OrderByElement): String {
                 throw new NotSupported("Relationships are not supported");
             }
             return `${element.target.name} ${direction}`;
-        case 'single_column_aggregate':
-        case 'star_count_aggregate':
+        default:
             throw new NotSupported("order_by_aggregate are not supported");
     }
 }

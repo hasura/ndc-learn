@@ -1,0 +1,3 @@
+# Let's Build a Connector - Part 7 - Observability
+
+

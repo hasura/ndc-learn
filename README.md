@@ -14,6 +14,7 @@ The dependencies required to follow along here are minimal - you will need Node 
 1. [Aggregates](tutorials/4.aggregates.markdown)
 1. [Relationships](tutorials/5.relationships.markdown)
 1. [Custom Operators](tutorials/6.operators.markdown)
+1. [Observability](tutorials/7.observability.markdown)
 
 ## Other Resources
 
@@ -60,12 +61,13 @@ docker run -p 8080:8080 -it ndc-learn
 
 ### Local development using v3-engine
 
-The `docker-compose.yaml` file provides an environment with the open source Hasura `v3-engine`, this connector, and Jaeger for tracing:
+The `docker-compose.yaml` file provides an environment with the open source Hasura `v3-engine`, this connector, Jaeger for tracing, and Prometheus for metrics:
 
 ```sh
 docker compose up
 open http://localhost:3000 # Graphiql
 open http://localhost:4002 # Jaeger
+open http://localhost:9090 # Prometheus
 ```
 
 When using Graphiql, remember to provide the appropriate headers. Specifically, `x-hasura-role` can be set to `admin` for testing.
