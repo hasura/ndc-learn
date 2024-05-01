@@ -3,7 +3,7 @@ import sqlite3 from 'sqlite3';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import { Database, open } from 'sqlite';
-import { BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ExplainResponse, Expression, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
+import { BadGateway, BadRequest, CapabilitiesResponse, CollectionInfo, ComparisonTarget, ComparisonValue, Connector, ConnectorError, ExplainResponse, Expression, ForeignKeyConstraint, InternalServerError, MutationRequest, MutationResponse, NotSupported, ObjectField, ObjectType, OrderByElement, Query, QueryRequest, QueryResponse, Relationship, RowFieldValue, ScalarType, SchemaResponse, start } from "@hasura/ndc-sdk-typescript";
 import { withActiveSpan } from "@hasura/ndc-sdk-typescript/instrumentation";
 import { Counter, Registry } from 'prom-client';
 
@@ -67,7 +67,11 @@ async function fetchMetrics(configuration: Configuration, state: State): Promise
 }
 
 async function healthCheck(configuration: Configuration, state: State): Promise<undefined> {
-    await state.db.all("SELECT 1");
+    try {
+        await state.db.all("SELECT 1");
+    } catch (x) {
+        throw new ConnectorError(503, "Service Unavailable");
+    }
 }
 
 function getCapabilities(configuration: Configuration): CapabilitiesResponse {
