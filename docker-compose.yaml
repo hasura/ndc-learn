@@ -13,7 +13,7 @@ services:
       - ./resources:/metadata
     depends_on:
       connector:
-        condition: service_started
+        condition: service_healthy
       jaeger:
         condition: service_started
       auth_hook:
@@ -34,7 +34,7 @@ services:
     ports:
       - 8080:8080
     environment:
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://jaeger:4317"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4318"
       OTEL_SERVICE_NAME: "ndc-learn"
     depends_on:
       jaeger:
@@ -57,3 +57,15 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
       COLLECTOR_ZIPKIN_HOST_PORT: "9411"
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./resources/prometheus/prometheus.yaml
+        target: /etc/prometheus/prometheus.yaml

@@ -4,7 +4,9 @@
     "test": "ndc-test replay --endpoint http://localhost:8080 --snapshots-dir snapshots"
   },
   "dependencies": {
-    "@hasura/ndc-sdk-typescript": "^4.3.0",
+    "@hasura/ndc-sdk-typescript": "^v4.6.0",
+    "@tsconfig/node20": "^20.1.4",
+    "prom-client": "^15.1.2",
     "sqlite": "^5.0.1",
     "sqlite3": "^5.1.6"
   },
