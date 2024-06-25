@@ -102,7 +102,6 @@ async function getSchema(configuration: Configuration): Promise<SchemaResponse> 
         return {
             arguments: {},
             name: table.tableName,
-            deletable: false,
             foreign_keys,
             uniqueness_constraints: {},
             type: table.tableName,
